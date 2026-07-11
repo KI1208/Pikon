@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <meta name="description" content="Hayaoshy 早押しクイズ参加者画面" />
+    <title>Hayaoshy - 早押しクイズ</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;900&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/static/participant/style.css" />
+  </head>
+  <body>
+
+    <!-- ======================================================= -->
+    <!-- Entry Screen                                             -->
+    <!-- ======================================================= -->
+    <div id="screen-entry" class="screen active" aria-label="参加登録画面">
+      <div class="entry-wrapper">
+        <div class="logo" aria-hidden="true">
+          <span class="logo-bolt">⚡</span>
+        </div>
+        <h1 class="app-title">Hayaoshy</h1>
+        <p class="app-subtitle">早押しクイズシステム</p>
+
+        <div class="entry-card glass">
+          <h2 class="entry-heading">参加登録</h2>
+          <form id="entry-form" novalidate>
+            <div class="form-group">
+              <label for="participant-id" class="form-label">社員番号 / ID</label>
+              <input
+                id="participant-id"
+                type="text"
+                class="form-input"
+                placeholder="例: EMP001"
+                autocomplete="off"
+                autocorrect="off"
+                autocapitalize="characters"
+                spellcheck="false"
+                maxlength="32"
+              />
+            </div>
+            <p id="entry-error" class="error-msg" role="alert" aria-live="polite"></p>
+            <button type="submit" id="entry-btn" class="btn-primary">
+              <span id="entry-btn-text">参加する</span>
+              <svg class="btn-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20"
+                viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M5 12h14M12 5l7 7-7 7"/>
+              </svg>
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- ======================================================= -->
+    <!-- Buzzer Screen                                            -->
+    <!-- ======================================================= -->
+    <div id="screen-buzzer" class="screen" aria-label="早押し画面">
+      <header class="buzzer-header">
+        <div class="my-id-badge glass" id="my-id-badge">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+            fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+            aria-hidden="true">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+            <circle cx="12" cy="7" r="4"/>
+          </svg>
+          <span id="my-id-display">---</span>
+        </div>
+        <span id="status-badge" class="status-badge status-waiting" aria-live="polite">待機中</span>
+        <div id="question-label" class="question-label" aria-live="polite">問題 1</div>
+      </header>
+
+      <main class="buzzer-main">
+        <div class="buzzer-area">
+          <div class="buzzer-ring" id="buzzer-ring" aria-hidden="true"></div>
+          <button
+            id="buzzer-btn"
+            class="buzzer-btn state-waiting"
+            disabled
+            aria-label="早押しボタン"
+          >
+            <span id="buzzer-text" class="buzzer-text">待機中</span>
+            <span id="buzzer-subtext" class="buzzer-subtext">司会者の合図をお待ちください</span>
+          </button>
+        </div>
+
+        <div id="press-result" class="press-result hidden" aria-live="assertive">
+          <span class="pr-label">あなたは</span>
+          <span id="press-rank-num" class="pr-num">-</span>
+          <span class="pr-label">番目に押しました</span>
+        </div>
+      </main>
+
+      <footer class="ranking-footer">
+        <div id="ranking-section" class="ranking-section hidden">
+          <p class="ranking-title">回答順位</p>
+          <ul id="ranking-list" class="ranking-list" aria-label="回答順位リスト"></ul>
+        </div>
+      </footer>
+    </div>
+
+    <script src="/static/participant/app.js"></script>
+  </body>
+</html>
