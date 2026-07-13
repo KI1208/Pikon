@@ -21,6 +21,68 @@ let questionNum  = 1;
 let roomId       = null;
 
 // ================================================================
+// Audio helper
+// ================================================================
+let audioCtx = null;
+
+function initAudio() {
+  try {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextClass) return;
+    if (!audioCtx) {
+      audioCtx = new AudioContextClass();
+    }
+    if (audioCtx && audioCtx.state === 'suspended') {
+      audioCtx.resume();
+    }
+  } catch (e) {
+    console.error("AudioContext initialization failed", e);
+  }
+}
+
+function playPikonSound() {
+  initAudio();
+  if (!audioCtx) return;
+
+  try {
+    const now = audioCtx.currentTime;
+
+    // "ピ" の音
+    const osc1 = audioCtx.createOscillator();
+    const gain1 = audioCtx.createGain();
+    osc1.type = 'sine';
+    osc1.frequency.setValueAtTime(950, now);
+    osc1.frequency.exponentialRampToValueAtTime(1000, now + 0.08);
+    gain1.gain.setValueAtTime(0.2, now);
+    gain1.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
+
+    osc1.connect(gain1);
+    gain1.connect(audioCtx.destination);
+
+    // "コン" の音
+    const osc2 = audioCtx.createOscillator();
+    const gain2 = audioCtx.createGain();
+    osc2.type = 'sine';
+    osc2.frequency.setValueAtTime(1100, now + 0.08);
+    osc2.frequency.exponentialRampToValueAtTime(700, now + 0.25);
+    gain2.gain.setValueAtTime(0.01, now);
+    gain2.gain.setValueAtTime(0.3, now + 0.08);
+    gain2.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+
+    osc2.connect(gain2);
+    gain2.connect(audioCtx.destination);
+
+    osc1.start(now);
+    osc1.stop(now + 0.08);
+
+    osc2.start(now + 0.08);
+    osc2.stop(now + 0.25);
+  } catch (e) {
+    console.error("Play sound failed", e);
+  }
+}
+
+// ================================================================
 // DOM refs
 // ================================================================
 
@@ -241,6 +303,7 @@ function handleMessage(data) {
     case 'press_ack':
       myRank = data.rank;
       updateUI(STATE.PRESSED);
+      playPikonSound();
       break;
 
     case 'result_update':
@@ -272,6 +335,7 @@ function resetEntryBtn() {
 
 entryForm.addEventListener('submit', (e) => {
   e.preventDefault();
+  initAudio();
   const rId = document.getElementById('room-id').value.trim();
   const id = entryInput.value.trim();
   
@@ -293,6 +357,7 @@ entryForm.addEventListener('submit', (e) => {
 });
 
 buzzerBtn.addEventListener('click', () => {
+  initAudio();
   if (currentState !== STATE.OPEN || !socket) return;
   buzzerBtn.disabled = true; // 二重送信防止
   socket.send(JSON.stringify({ type: 'press' }));

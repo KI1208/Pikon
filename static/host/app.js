@@ -11,6 +11,68 @@ if (!token || !roomId) {
 }
 
 // ================================================================
+// Audio helper
+// ================================================================
+let audioCtx = null;
+
+function initAudio() {
+  try {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextClass) return;
+    if (!audioCtx) {
+      audioCtx = new AudioContextClass();
+    }
+    if (audioCtx && audioCtx.state === 'suspended') {
+      audioCtx.resume();
+    }
+  } catch (e) {
+    console.error("AudioContext initialization failed", e);
+  }
+}
+
+function playPikonSound() {
+  initAudio();
+  if (!audioCtx) return;
+
+  try {
+    const now = audioCtx.currentTime;
+
+    // "ピ" の音
+    const osc1 = audioCtx.createOscillator();
+    const gain1 = audioCtx.createGain();
+    osc1.type = 'sine';
+    osc1.frequency.setValueAtTime(950, now);
+    osc1.frequency.exponentialRampToValueAtTime(1000, now + 0.08);
+    gain1.gain.setValueAtTime(0.2, now);
+    gain1.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
+
+    osc1.connect(gain1);
+    gain1.connect(audioCtx.destination);
+
+    // "コン" の音
+    const osc2 = audioCtx.createOscillator();
+    const gain2 = audioCtx.createGain();
+    osc2.type = 'sine';
+    osc2.frequency.setValueAtTime(1100, now + 0.08);
+    osc2.frequency.exponentialRampToValueAtTime(700, now + 0.25);
+    gain2.gain.setValueAtTime(0.01, now);
+    gain2.gain.setValueAtTime(0.3, now + 0.08);
+    gain2.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+
+    osc2.connect(gain2);
+    gain2.connect(audioCtx.destination);
+
+    osc1.start(now);
+    osc1.stop(now + 0.08);
+
+    osc2.start(now + 0.08);
+    osc2.stop(now + 0.25);
+  } catch (e) {
+    console.error("Play sound failed", e);
+  }
+}
+
+// ================================================================
 // State
 // ================================================================
 
@@ -124,7 +186,11 @@ function handleMessage(data) {
       break;
 
     case 'result_update':
-      ranking        = data.ranking || [];
+      const newRanking = data.ranking || [];
+      if (ranking.length === 0 && newRanking.length > 0) {
+        playPikonSound();
+      }
+      ranking        = newRanking;
       currentRankIdx = data.current_rank_index ?? 0;
       renderRanking();
       break;
@@ -280,24 +346,29 @@ function send(obj) {
 }
 
 btnOpen.addEventListener('click', () => {
+  initAudio();
   send({ type: 'host_open' });
 });
 
 btnClose.addEventListener('click', () => {
+  initAudio();
   send({ type: 'host_close' });
 });
 
 btnNext.addEventListener('click', () => {
+  initAudio();
   send({ type: 'host_next_candidate' });
 });
 
 btnReset.addEventListener('click', () => {
+  initAudio();
   if (confirm('次の問題に進みますか？ （現在の回答状況がリセットされます）')) {
     send({ type: 'host_reset' });
   }
 });
 
 logoutBtn.addEventListener('click', () => {
+  initAudio();
   sessionStorage.removeItem('hayaoshy_token');
   window.location.replace('/host/login');
 });

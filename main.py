@@ -1,5 +1,5 @@
 """
-Hayaoshy - リアルタイム早押しクイズシステム
+Pikon - リアルタイム早押しクイズシステム
 FastAPI エントリーポイント
 """
 
@@ -42,7 +42,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="Hayaoshy",
+    title="Pikon",
     description="リアルタイム早押しクイズシステム",
     lifespan=lifespan,
 )
