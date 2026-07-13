@@ -10,8 +10,7 @@ import logging
 from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
 
 from auth import verify_token
-from connection_manager import manager
-from room import room
+from room import room_manager, RoomState
 
 logger = logging.getLogger("uvicorn")
 
@@ -23,9 +22,9 @@ router = APIRouter()
 # ------------------------------------------------------------------ #
 
 
-async def _broadcast_participant_update() -> None:
+async def _broadcast_participant_update(room: RoomState) -> None:
     """参加者リスト更新を全員に配信"""
-    await manager.broadcast_all(
+    await room.manager.broadcast_all(
         {
             "type": "participant_update",
             "count": len(room.participants),
@@ -34,9 +33,9 @@ async def _broadcast_participant_update() -> None:
     )
 
 
-async def _broadcast_result_update() -> None:
+async def _broadcast_result_update(room: RoomState) -> None:
     """現在の順位情報を全員に配信"""
-    await manager.broadcast_all(
+    await room.manager.broadcast_all(
         {
             "type": "result_update",
             "ranking": room.get_ranking(),
@@ -53,7 +52,19 @@ async def _broadcast_result_update() -> None:
 
 
 @router.websocket("/participant")
-async def participant_ws(websocket: WebSocket) -> None:
+async def participant_ws(
+    websocket: WebSocket,
+    room_id: str = Query(...),
+) -> None:
+    room = room_manager.get_room(room_id)
+    if not room:
+        await websocket.accept()
+        await websocket.send_text(
+            json.dumps({"type": "join_ack", "success": False, "reason": "指定されたルームが存在しません"})
+        )
+        await websocket.close(code=4002)
+        return
+
     await websocket.accept()
     participant_id: str | None = None
 
@@ -73,16 +84,16 @@ async def participant_ws(websocket: WebSocket) -> None:
                 success, reason = room.join(pid)
 
                 if not success:
-                    await manager.send_to_websocket(
+                    await room.manager.send_to_websocket(
                         websocket,
                         {"type": "join_ack", "success": False, "reason": reason},
                     )
                     continue
 
                 participant_id = pid
-                manager.register_participant(pid, websocket)
+                room.manager.register_participant(pid, websocket)
 
-                await manager.send_to_websocket(
+                await room.manager.send_to_websocket(
                     websocket,
                     {
                         "type": "join_ack",
@@ -91,7 +102,7 @@ async def participant_ws(websocket: WebSocket) -> None:
                         "question_number": room.question_number,
                     },
                 )
-                await _broadcast_participant_update()
+                await _broadcast_participant_update(room)
 
             # ---- press ----------------------------------------------
             elif event == "press":
@@ -100,12 +111,12 @@ async def participant_ws(websocket: WebSocket) -> None:
 
                 rank = room.press(participant_id)
                 if rank is not None:
-                    await manager.send_to_participant(
+                    await room.manager.send_to_participant(
                         participant_id,
                         {"type": "press_ack", "rank": rank},
                     )
                     # ホストにもリアルタイムで順位を反映
-                    await manager.broadcast_hosts(
+                    await room.manager.broadcast_hosts(
                         {
                             "type": "result_update",
                             "ranking": room.get_ranking(),
@@ -118,12 +129,12 @@ async def participant_ws(websocket: WebSocket) -> None:
     except WebSocketDisconnect:
         if participant_id:
             room.leave(participant_id)
-            manager.unregister_participant(participant_id)
-            await _broadcast_participant_update()
+            room.manager.unregister_participant(participant_id)
+            await _broadcast_participant_update(room)
     except Exception:
         if participant_id:
             room.leave(participant_id)
-            manager.unregister_participant(participant_id)
+            room.manager.unregister_participant(participant_id)
 
 
 # ------------------------------------------------------------------ #
@@ -136,7 +147,13 @@ async def host_ws(websocket: WebSocket, token: str = Query(...)) -> None:
     # JWT 検証
     await websocket.accept()
     try:
-        verify_token(token)
+        payload = verify_token(token)
+        room_id = payload.get("sub")
+        if not room_id or payload.get("role") != "host":
+            raise Exception("Invalid token scope")
+        room = room_manager.get_room(room_id)
+        if not room:
+            raise Exception("Room not found")
     except Exception:
         await websocket.send_text(
             json.dumps({"type": "auth_error", "message": "認証エラー: 再ログインしてください"})
@@ -144,10 +161,10 @@ async def host_ws(websocket: WebSocket, token: str = Query(...)) -> None:
         await websocket.close(code=4001)
         return
 
-    manager.register_host(websocket)
+    room.manager.register_host(websocket)
 
     # 初期状態を送信
-    await manager.send_to_websocket(
+    await room.manager.send_to_websocket(
         websocket,
         {
             "type": "init",
@@ -158,6 +175,7 @@ async def host_ws(websocket: WebSocket, token: str = Query(...)) -> None:
             "current_id": room.get_current_candidate(),
             "next_id": room.get_next_candidate(),
             "current_rank_index": room.current_rank_index,
+            "room_id": room.room_id,
         },
     )
 
@@ -178,7 +196,7 @@ async def host_ws(websocket: WebSocket, token: str = Query(...)) -> None:
             if event == "host_open":
                 logger.info("[WS Host] Opening buzzer...")
                 room.open_buzzer()
-                await manager.broadcast_all(
+                await room.manager.broadcast_all(
                     {
                         "type": "status_change",
                         "status": "open",
@@ -190,18 +208,18 @@ async def host_ws(websocket: WebSocket, token: str = Query(...)) -> None:
             # ---- host_close -----------------------------------------
             elif event == "host_close":
                 room.close_buzzer()
-                await manager.broadcast_all({"type": "status_change", "status": "closed"})
-                await _broadcast_result_update()
+                await room.manager.broadcast_all({"type": "status_change", "status": "closed"})
+                await _broadcast_result_update(room)
 
             # ---- host_next_candidate --------------------------------
             elif event == "host_next_candidate":
                 room.next_candidate()
-                await _broadcast_result_update()
+                await _broadcast_result_update(room)
 
             # ---- host_reset -----------------------------------------
             elif event == "host_reset":
                 room.reset()
-                await manager.broadcast_all(
+                await room.manager.broadcast_all(
                     {
                         "type": "reset",
                         "question_number": room.question_number,
@@ -210,6 +228,6 @@ async def host_ws(websocket: WebSocket, token: str = Query(...)) -> None:
                 )
 
     except WebSocketDisconnect:
-        manager.unregister_host(websocket)
+        room.manager.unregister_host(websocket)
     except Exception:
-        manager.unregister_host(websocket)
+        room.manager.unregister_host(websocket)

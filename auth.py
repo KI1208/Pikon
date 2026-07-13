@@ -10,6 +10,8 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
 
+from room import room_manager, RoomState
+
 SECRET_KEY: str = os.getenv("SECRET_KEY", "insecure-dev-key-change-in-prod")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_HOURS = 8
@@ -45,13 +47,30 @@ def verify_token(token: str) -> dict:
         ) from exc
 
 
-def authenticate_host(username: str, password: str) -> bool:
-    """ホスト認証情報を検証する"""
-    return username == HOST_USERNAME and password == HOST_PASSWORD
+def authenticate_room_host(room_id: str, password: str) -> bool:
+    """指定されたルームIDとパスワードが一致するか検証する"""
+    room = room_manager.get_room(room_id)
+    if not room:
+        return False
+    return room.password == password
 
 
-async def get_current_host(
+async def get_current_room_host(
     credentials: HTTPAuthorizationCredentials = Depends(_security),
-) -> dict:
-    """Bearer トークンを検証する FastAPI Dependency"""
-    return verify_token(credentials.credentials)
+) -> RoomState:
+    """Bearer トークンを検証し、該当する RoomState を返す FastAPI Dependency"""
+    payload = verify_token(credentials.credentials)
+    room_id = payload.get("sub")
+    if not room_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="無効なトークンです (ルームIDがありません)",
+        )
+    
+    room = room_manager.get_room(room_id)
+    if not room:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="ルームが存在しないか、すでに削除されています",
+        )
+    return room

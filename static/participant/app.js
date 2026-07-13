@@ -18,6 +18,7 @@ let socket       = null;
 let myId         = null;
 let myRank       = null;
 let questionNum  = 1;
+let roomId       = null;
 
 // ================================================================
 // DOM refs
@@ -168,7 +169,7 @@ function renderRanking(ranking, currentRankIndex) {
 
 function connect() {
   const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const url   = `${proto}//${location.host}/ws/participant`;
+  const url   = `${proto}//${location.host}/ws/participant?room_id=${encodeURIComponent(roomId)}`;
   socket = new WebSocket(url);
 
   socket.onopen = () => {
@@ -205,6 +206,7 @@ function handleMessage(data) {
     case 'join_ack':
       if (data.success) {
         myIdDisplay.textContent = myId;
+        document.getElementById('room-id-display-participant').textContent = `Room: ${roomId}`;
         showScreen('buzzer');
         questionNum = data.question_number || 1;
         questionLabel.textContent = `問題 ${questionNum}`;
@@ -270,12 +272,19 @@ function resetEntryBtn() {
 
 entryForm.addEventListener('submit', (e) => {
   e.preventDefault();
+  const rId = document.getElementById('room-id').value.trim();
   const id = entryInput.value.trim();
+  
+  if (!rId) {
+    entryError.textContent = 'ルームIDを入力してください';
+    return;
+  }
   if (!id) {
     entryError.textContent = 'IDを入力してください';
     return;
   }
 
+  roomId = rId;
   myId = id;
   entryError.textContent    = '';
   entryBtn.disabled         = true;
@@ -292,4 +301,10 @@ buzzerBtn.addEventListener('click', () => {
 // ================================================================
 // Init
 // ================================================================
+const urlParams = new URLSearchParams(window.location.search);
+const roomParam = urlParams.get('room');
+if (roomParam) {
+  document.getElementById('room-id').value = roomParam;
+  document.getElementById('room-id-group').style.display = 'none';
+}
 showScreen('entry');

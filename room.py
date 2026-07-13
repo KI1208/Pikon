@@ -4,8 +4,10 @@
 """
 
 import time
+import secrets
 from dataclasses import dataclass, field
 from typing import Literal, Optional
+from connection_manager import ConnectionManager
 
 
 @dataclass
@@ -17,9 +19,11 @@ class Press:
 
 
 class RoomState:
-    """クイズルームの状態を管理するシングルトン"""
+    """クイズルームの状態を管理するクラス"""
 
-    def __init__(self) -> None:
+    def __init__(self, room_id: str, password: str) -> None:
+        self.room_id: str = room_id
+        self.password: str = password
         self.status: Literal["waiting", "open", "closed"] = "waiting"
         self.question_number: int = 1
         # participant_id -> display_name (現時点では同じ値)
@@ -28,6 +32,8 @@ class RoomState:
         self.presses: list[Press] = []
         # 司会者が現在フォーカスしている候補のインデックス (0-based)
         self.current_rank_index: int = 0
+        self.manager: ConnectionManager = ConnectionManager()
+        self.created_at: float = time.time()
 
     # ------------------------------------------------------------------ #
     # 参加者管理
@@ -131,5 +137,46 @@ class RoomState:
         return None
 
 
+class RoomManager:
+    """複数のクイズルームをメモリ上で管理する"""
+
+    def __init__(self) -> None:
+        self.rooms: dict[str, RoomState] = {}
+
+    def create_room(self, room_id: Optional[str] = None) -> RoomState:
+        """ルームを新規作成する。ルームIDが未指定または重複した場合は自動生成。"""
+        if not room_id:
+            room_id = secrets.token_hex(3)
+        else:
+            room_id = room_id.strip()
+            if not room_id:
+                room_id = secrets.token_hex(3)
+
+        while room_id in self.rooms:
+            room_id = secrets.token_hex(3)
+
+        password = secrets.token_hex(4)
+
+        new_room = RoomState(room_id, password)
+        self.rooms[room_id] = new_room
+        return new_room
+
+    def get_room(self, room_id: str) -> Optional[RoomState]:
+        return self.rooms.get(room_id)
+
+    def delete_room(self, room_id: str) -> None:
+        self.rooms.pop(room_id, None)
+
+    def clean_old_rooms(self, max_age_seconds: float = 86400) -> None:
+        """作成から一定時間（デフォルト24時間）が経過したルームを削除する"""
+        now = time.time()
+        expired = [
+            r_id for r_id, r in self.rooms.items()
+            if now - r.created_at > max_age_seconds
+        ]
+        for r_id in expired:
+            self.delete_room(r_id)
+
+
 # シングルトンインスタンス
-room = RoomState()
+room_manager = RoomManager()

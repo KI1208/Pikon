@@ -25,13 +25,13 @@
       <div class="login-card glass">
         <form id="login-form" novalidate>
           <div class="form-group">
-            <label for="username" class="form-label">ユーザー名</label>
+            <label for="room-id" class="form-label">ルームID</label>
             <input
-              id="username"
+              id="room-id"
               type="text"
               class="form-input"
-              placeholder="host"
-              autocomplete="username"
+              placeholder="例: room-abc"
+              autocomplete="off"
               autocorrect="off"
               spellcheck="false"
               required
@@ -66,6 +66,13 @@
     </div>
 
     <script>
+      // URLパラメータにルームIDがあれば入力欄に自動設定
+      const urlParams = new URLSearchParams(window.location.search);
+      const roomParam = urlParams.get('room');
+      if (roomParam) {
+        document.getElementById('room-id').value = roomParam;
+      }
+
       // 既にトークンがあれば /host にリダイレクト
       if (sessionStorage.getItem('hayaoshy_token')) {
         window.location.replace('/host');
@@ -77,11 +84,11 @@
         const btn   = document.getElementById('login-btn');
         const btnTx = document.getElementById('login-btn-text');
 
-        const username = document.getElementById('username').value.trim();
+        const roomId = document.getElementById('room-id').value.trim();
         const password = document.getElementById('password').value;
 
-        if (!username || !password) {
-          errEl.textContent = 'ユーザー名とパスワードを入力してください';
+        if (!roomId || !password) {
+          errEl.textContent = 'ルームIDとパスワードを入力してください';
           return;
         }
 
@@ -93,7 +100,7 @@
           const resp = await fetch('/api/host/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username, password }),
+            body: JSON.stringify({ room_id: roomId, password }),
           });
 
           if (!resp.ok) {
@@ -104,8 +111,9 @@
             return;
           }
 
-          const { token } = await resp.json();
+          const { token, room_id } = await resp.json();
           sessionStorage.setItem('hayaoshy_token', token);
+          sessionStorage.setItem('hayaoshy_room_id', room_id);
           window.location.replace('/host');
         } catch {
           errEl.textContent = 'サーバーへの接続に失敗しました';

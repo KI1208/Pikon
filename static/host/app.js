@@ -4,8 +4,9 @@
 // Auth check
 // ================================================================
 
-const token = sessionStorage.getItem('hayaoshy_token');
-if (!token) {
+const token  = sessionStorage.getItem('hayaoshy_token');
+const roomId = sessionStorage.getItem('hayaoshy_room_id');
+if (!token || !roomId) {
   window.location.replace('/host/login');
 }
 
@@ -259,7 +260,7 @@ async function loadQR() {
     if (resp.ok) {
       const blob = await resp.blob();
       qrImg.src  = URL.createObjectURL(blob);
-      qrUrl.textContent = `${location.protocol}//${location.host}/`;
+      qrUrl.textContent = `${location.protocol}//${location.host}/?room=${encodeURIComponent(roomId)}`;
     }
   } catch {
     qrImg.alt = 'QR コードを読み込めませんでした';
@@ -317,5 +318,6 @@ function escHtml(str) {
 // Init
 // ================================================================
 
+document.getElementById('room-id-badge').textContent = `Room: ${roomId}`;
 loadQR();
 connect();

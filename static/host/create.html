@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Hayaoshy ルーム作成" />
+    <title>Hayaoshy - ルーム作成</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;900&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/static/host/style.css" />
+  </head>
+  <body class="login-page">
+
+    <div class="login-wrapper">
+      <div class="login-brand">
+        <div class="brand-logo" aria-hidden="true">⚡</div>
+        <h1 class="brand-name">Hayaoshy</h1>
+        <p class="brand-sub">新規ルーム作成</p>
+      </div>
+
+      <div class="login-card glass" id="setup-card">
+        <form id="create-form" novalidate>
+          <div class="form-group">
+            <label for="room-id-input" class="form-label">カスタム ルームID（省略可能）</label>
+            <input
+              id="room-id-input"
+              type="text"
+              class="form-input"
+              placeholder="例: my-room (英数字のみ)"
+              autocomplete="off"
+              autocorrect="off"
+              spellcheck="false"
+              maxlength="32"
+            />
+          </div>
+
+          <p id="create-error" class="error-msg" role="alert" aria-live="polite"></p>
+
+          <button type="submit" id="create-btn" class="btn-primary" style="margin-top: 28px;">
+            <span id="create-btn-text">ルームを作成する</span>
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18"
+              viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+          </button>
+        </form>
+      </div>
+
+      <div class="login-card glass" id="result-card" style="display: none; flex-direction: column; gap: 16px;">
+        <h2 style="font-size: 20px; font-weight: 700; text-align: center; color: #fff; margin-bottom: 8px;">
+          ルーム作成完了！ 🎉
+        </h2>
+        
+        <p style="font-size: 14px; color: rgba(255,255,255,0.7); text-align: center; margin-bottom: 12px;">
+          以下の情報を必ず控えてください。管理者パスワードは再表示できません。
+        </p>
+
+        <div class="info-row" style="display: flex; justify-content: space-between; padding: 12px; background: rgba(255,255,255,0.05); border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); align-items: center;">
+          <span style="color: rgba(255,255,255,0.6); font-size: 14px;">ルームID</span>
+          <strong id="created-room-id" style="color: #00ffcc; font-size: 16px; font-family: monospace;">---</strong>
+        </div>
+
+        <div class="info-row" style="display: flex; justify-content: space-between; padding: 12px; background: rgba(255,255,255,0.05); border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); align-items: center;">
+          <span style="color: rgba(255,255,255,0.6); font-size: 14px;">管理者パスワード</span>
+          <strong id="created-password" style="color: #ff3366; font-size: 16px; font-family: monospace;">---</strong>
+        </div>
+
+        <div style="margin-top: 16px; display: flex; flex-direction: column; gap: 12px;">
+          <button id="to-login-btn" class="btn-primary">
+            <span>司会者ログイン画面へ</span>
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18"
+              viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
+              <polyline points="10 17 15 12 10 7"/>
+              <line x1="15" y1="12" x2="3" y2="12"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      document.getElementById('create-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const errEl = document.getElementById('create-error');
+        const btn   = document.getElementById('create-btn');
+        const btnTx = document.getElementById('create-btn-text');
+
+        const roomIdVal = document.getElementById('room-id-input').value.trim();
+        
+        btn.disabled      = true;
+        btnTx.textContent = '作成中...';
+        errEl.textContent = '';
+
+        try {
+          const resp = await fetch('/api/host/room/create', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ room_id: roomIdVal || null }),
+          });
+
+          if (!resp.ok) {
+            const body = await resp.json().catch(() => ({}));
+            errEl.textContent = body.detail || 'ルームの作成に失敗しました';
+            btn.disabled      = false;
+            btnTx.textContent = 'ルームを作成する';
+            return;
+          }
+
+          const { room_id, password } = await resp.json();
+
+          // 結果を表示
+          document.getElementById('setup-card').style.display = 'none';
+          
+          const resCard = document.getElementById('result-card');
+          resCard.style.display = 'flex';
+          
+          document.getElementById('created-room-id').textContent = room_id;
+          document.getElementById('created-password').textContent = password;
+
+          document.getElementById('to-login-btn').addEventListener('click', () => {
+            window.location.replace('/host/login?room=' + encodeURIComponent(room_id));
+          });
+
+        } catch (e) {
+          errEl.textContent = 'サーバーへの接続に失敗しました';
+          btn.disabled      = false;
+          btnTx.textContent = 'ルームを作成する';
+        }
+      });
+    </script>
+  </body>
+</html>

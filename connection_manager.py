@@ -71,5 +71,3 @@ class ConnectionManager:
         await asyncio.gather(*[self._send(ws, data) for ws in targets], return_exceptions=True)
 
 
-# シングルトンインスタンス
-manager = ConnectionManager()
