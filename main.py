@@ -9,7 +9,7 @@ from contextlib import asynccontextmanager
 
 from dotenv import load_dotenv
 from fastapi import FastAPI
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from room import room_manager
@@ -55,15 +55,24 @@ app.include_router(host_api.router, prefix="/api/host", tags=["host-api"])
 app.include_router(ws_router.router, prefix="/ws", tags=["websocket"])
 
 
-@app.get("/", response_class=HTMLResponse, summary="参加者画面")
-async def participant_page():
-    with open("static/participant/index.html", "r", encoding="utf-8") as f:
-        return HTMLResponse(content=f.read())
+@app.get("/", response_class=HTMLResponse, summary="ルーム作成または参加者画面")
+async def root_page(room: str | None = None):
+    if room:
+        with open("static/participant/index.html", "r", encoding="utf-8") as f:
+            return HTMLResponse(content=f.read())
+    else:
+        with open("static/host/create.html", "r", encoding="utf-8") as f:
+            return HTMLResponse(content=f.read())
 
 
-@app.get("/host/create", response_class=HTMLResponse, summary="司会者ルーム作成画面")
+@app.get("/host/create", summary="司会者ルーム作成画面 (リダイレクト)")
 async def host_create_page():
-    with open("static/host/create.html", "r", encoding="utf-8") as f:
+    return RedirectResponse(url="/")
+
+
+@app.get("/join", response_class=HTMLResponse, summary="参加者画面 (手動入力用)")
+async def participant_join_page():
+    with open("static/participant/index.html", "r", encoding="utf-8") as f:
         return HTMLResponse(content=f.read())
 
 

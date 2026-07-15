@@ -57,7 +57,8 @@ cp .env.example .env
 uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-- 参加者画面: http://localhost:8000/
+- ルーム作成画面: http://localhost:8000/
+- 参加者画面 (手動入力用): http://localhost:8000/join
 - 司会者ログイン: http://localhost:8000/host/login
 - 司会者パネル: http://localhost:8000/host
 
