@@ -1,4 +1,4 @@
-# ⚡ Hayaoshy — リアルタイム早押しクイズシステム
+# ⚡ Pikon — リアルタイム早押しクイズシステム
 
 不特定多数が同時接続し、ミリ秒単位の精度で回答者を選出するリアルタイム WebSocket 早押しシステムです。
 
@@ -14,7 +14,7 @@
 ## ディレクトリ構成
 
 ```
-Hayaoshy/
+Pikon/
 ├── main.py                   # FastAPI エントリーポイント
 ├── auth.py                   # JWT 認証
 ├── room.py                   # ルーム状態管理
@@ -82,8 +82,18 @@ gcloud config set project <YOUR_PROJECT_ID>
 echo -n "your-secret-key" | gcloud secrets create HAYAOSHY_SECRET_KEY --data-file=-
 echo -n "your-password"   | gcloud secrets create HAYAOSHY_HOST_PASSWORD --data-file=-
 
+# サービスアカウントへのシークレット参照権限の付与 (初回のみ)
+# ※ <PROJECT_NUMBER> はご自身のGoogle Cloudプロジェクト番号に置き換えてください
+gcloud secrets add-iam-policy-binding HAYAOSHY_SECRET_KEY \
+  --member="serviceAccount:<PROJECT_NUMBER>-compute@developer.gserviceaccount.com" \
+  --role="roles/secretmanager.secretAccessor"
+
+gcloud secrets add-iam-policy-binding HAYAOSHY_HOST_PASSWORD \
+  --member="serviceAccount:<PROJECT_NUMBER>-compute@developer.gserviceaccount.com" \
+  --role="roles/secretmanager.secretAccessor"
+
 # Cloud Run へデプロイ
-gcloud run deploy hayaoshy \
+gcloud run deploy pikon \
   --source . \
   --region asia-northeast1 \
   --platform managed \
@@ -92,7 +102,7 @@ gcloud run deploy hayaoshy \
   --min-instances 1 \
   --timeout 3600 \
   --set-env-vars HOST_USERNAME=host \
-  --set-secrets SECRET_KEY=HAYAOSHY_SECRET_KEY:latest,HOST_PASSWORD=HAYAOSHY_HOST_PASSWORD:latest
+  --set-secrets "SECRET_KEY=HAYAOSHY_SECRET_KEY:latest,HOST_PASSWORD=HAYAOSHY_HOST_PASSWORD:latest"
 ```
 
 > **Note**: `--max-instances=1` は必須です。インメモリ状態管理のため、複数インスタンスへのスケールアウトはサポートしていません。

@@ -1,6 +1,6 @@
-# Hayaoshy – Google Cloud Run デプロイガイド
+# Pikon – Google Cloud Run デプロイガイド
 
-本アプリケーション（Hayaoshy）を Google Cloud Run にデプロイするための手順と、インメモリ設計に伴う重要な設定項目について説明します。
+本アプリケーション（Pikon）を Google Cloud Run にデプロイするための手順と、インメモリ設計に伴う重要な設定項目について説明します。
 
 ---
 
@@ -31,14 +31,14 @@
 
 ## 2. デプロイ手順
 
-プロジェクトのルートディレクトリ（`c:\Projects\Hayaoshy`）で以下のコマンドを実行します。
+プロジェクトのルートディレクトリ（`c:\Projects\Pikon`）で以下のコマンドを実行します。
 
 ### 方法A: ソースコードから直接デプロイ（推奨・簡単）
 
 gcloud のソースデプロイ機能を使用すると、自動的に Cloud Build で Docker イメージがビルドされ、Cloud Run にデプロイされます。
 
 ```bash
-gcloud run deploy hayaoshy \
+gcloud run deploy pikon \
   --source . \
   --platform managed \
   --region asia-northeast1 \
@@ -59,11 +59,11 @@ Docker イメージを一度 Artifact Registry / Container Registry に登録し
 
 ```bash
 # 1. Cloud Build でイメージをビルド・登録
-gcloud builds submit --tag gcr.io/[PROJECT_ID]/hayaoshy:latest
+gcloud builds submit --tag gcr.io/[PROJECT_ID]/pikon:latest
 
 # 2. 登録したイメージを Cloud Run にデプロイ
-gcloud run deploy hayaoshy \
-  --image gcr.io/[PROJECT_ID]/hayaoshy:latest \
+gcloud run deploy pikon \
+  --image gcr.io/[PROJECT_ID]/pikon:latest \
   --platform managed \
   --region asia-northeast1 \
   --allow-unauthenticated \
@@ -78,14 +78,14 @@ gcloud run deploy hayaoshy \
 ## 3. デプロイ後の設定（QRコード用URLの更新）
 
 デプロイが完了すると、以下のようなサービス URL が発行されます。
-`https://hayaoshy-xxxxxx-an.a.run.app`
+`https://pikon-xxxxxx-an.a.run.app`
 
 司会者パネルで表示される参加者用 QR コードに本番環境の正しい URL を埋め込むため、環境変数 `QR_BASE_URL` にこの URL を設定して再反映します。
 
 ```bash
-gcloud run services update hayaoshy \
+gcloud run services update pikon \
   --region asia-northeast1 \
-  --update-env-vars "QR_BASE_URL=https://hayaoshy-xxxxxx-an.a.run.app"
+  --update-env-vars "QR_BASE_URL=https://pikon-xxxxxx-an.a.run.app"
 ```
 
 ---
@@ -99,4 +99,4 @@ gcloud run services update hayaoshy \
 | `JWT_SECRET` | 司会者ログインセッション認証用の暗号鍵 | 32文字以上のランダムな文字列 |
 | `HOST_USERNAME`| 司会者コントロールパネルのログインID | `host_admin` |
 | `HOST_PASSWORD`| 司会者コントロールパネルのログインパスワード| `your-secure-password` |
-| `QR_BASE_URL` | 参加用QRコードに埋め込む基準URL (本番用) | `https://hayaoshy-xxxxxx-an.a.run.app` |
+| `QR_BASE_URL` | 参加用QRコードに埋め込む基準URL (本番用) | `https://pikon-xxxxxx-an.a.run.app` |
